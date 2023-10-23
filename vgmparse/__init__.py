@@ -337,6 +337,7 @@ class Parser:
         # Set up the variables that will be populated
         self.command_list = []
         self.data_block = None
+        self.data_block_type = None
         self.gd3_data = {}
         self.metadata = {}
 
@@ -367,9 +368,14 @@ class Parser:
             if command == '':
                 break
 
+            # 0x31 dd - AY8910 stereo mask, dd is a bit mask of i y r3 l3 r2 l2 r1 l1 (bit 7 ... 0)
+            #           i   chip instance (0 or 1)
+            #           y   set stereo mask for YM2203 SSG (1) or AY8910 (0)
+            #           l1/l2/l3    enable channel 1/2/3 on left speaker
+            #           r1/r2/r3    enable channel 1/2/3 on right speaker
             # 0x4f dd - Game Gear PSG stereo, write dd to port 0x06
             # 0x50 dd - PSG (SN76489/SN76496) write value dd
-            if command in [b'\x4f', b'\x50']:
+            if command in [b'\x31', b'\x4f', b'\x50']:
                 self.command_list.append({
                     'command': command,
                     'data': self.data.read(1),
@@ -379,7 +385,43 @@ class Parser:
             # 0x52 aa dd - YM2612 port 0, write value dd to register aa
             # 0x53 aa dd - YM2612 port 1, write value dd to register aa
             # 0x54 aa dd - YM2151, write value dd to register aa
-            elif command in [b'\x51', b'\x52', b'\x53', b'\x54']:
+            # 0x55 aa dd - YM2203, write value dd to register aa
+            # 0x56 aa dd - YM2608 port 0, write value dd to register aa
+            # 0x57 aa dd - YM2608 port 1, write value dd to register aa
+            # 0x58 aa dd - YM2610 port 0, write value dd to register aa
+            # 0x59 aa dd - YM2610 port 1, write value dd to register aa
+            # 0x5A aa dd - YM3812, write value dd to register aa
+            # 0x5B aa dd - YM3526, write value dd to register aa
+            # 0x5C aa dd - Y8950, write value dd to register aa
+            # 0x5D aa dd - YMZ280B, write value dd to register aa
+            # 0x5E aa dd - YMF262 port 0, write value dd to register aa
+            # 0x5F aa dd - YMF262 port 1, write value dd to register aa
+            # 0xA0 aa dd - AY8910, write value dd to register aa
+            # 0xB0 aa dd - RF5C68, write value dd to register aa
+            # 0xB1 aa dd - RF5C164, write value dd to register aa
+            # 0xB2 ad dd - PWM, write value ddd to register a (d is MSB, dd is LSB)
+            # 0xB3 aa dd - GameBoy DMG, write value dd to register aa
+            # 0xB4 aa dd - NES APU, write value dd to register aa
+            # 0xB5 aa dd - MultiPCM, write value dd to register aa
+            # 0xB6 aa dd - uPD7759, write value dd to register aa
+            # 0xB7 aa dd - OKIM6258, write value dd to register aa
+            # 0xB8 aa dd - OKIM6295, write value dd to register aa
+            # 0xB9 aa dd - HuC6280, write value dd to register aa
+            # 0xBA aa dd - K053260, write value dd to register aa
+            # 0xBB aa dd - Pokey, write value dd to register aa
+            # 0xBC aa dd - WonderSwan, write value dd to register aa
+            # 0xBD aa dd - SAA1099, write value dd to register aa
+            # 0xBE aa dd - ES5506, write value dd to register aa
+            # 0xBF aa dd - GA20, write value dd to register aa
+            elif command in [b'\x51', b'\x52', b'\x53', b'\x54',
+                             b'\x55', b'\x56', b'\x57', b'\x58',
+                             b'\x59', b'\x5a', b'\x5b', b'\x5c',
+                             b'\x5d', b'\x5e', b'\x5f', b'\xa0',
+                             b'\xb0', b'\xb1', b'\xb2', b'\xb3',
+                             b'\xb4', b'\xb5', b'\xb6', b'\xb7',
+                             b'\xb8', b'\xb9', b'\xbA', b'\xbB',
+                             b'\xbC', b'\xbD', b'\xbE', b'\xbF',
+                            ]:
                 self.command_list.append({
                     'command': command,
                     'data': self.data.read(2),
@@ -389,7 +431,7 @@ class Parser:
             elif command == b'\x61':
                 self.command_list.append({
                     'command': command,
-                    'data': self.data.read(2),
+                    'data': self.data.read(2), # struct.unpack('<H', self.data.read(2))[0],
                 })
 
             # 0x62 - Wait 735 samples (60th of a second)
@@ -405,8 +447,10 @@ class Parser:
 
             # 0x67 0x66 tt ss ss ss ss - Data block
             elif command == b'\x67':
-                # Skip the compatibility and type bytes (0x66 tt)
-                self.data.seek(2, 1)
+                # Skip the compatibility byte (0x66)
+                self.data.seek(1, 1)
+
+                self.data_block_type = self.data.read(1)
 
                 # Read the size of the data block
                 data_block_size = struct.unpack('<I', self.data.read(4))[0]
@@ -414,15 +458,136 @@ class Parser:
                 # Store the data block for later use
                 self.data_block = ByteBuffer(self.data.read(data_block_size))
 
+            # 0x68 0x66 cc oo oo oo dd dd dd ss ss ss - PCM RAM write
+            elif command == b'\x68':
+                # Skip the compatibility byte (0x66)
+                self.data.seek(1, 1)
+
+                # Read PCM RAM write parameters
+                # cc   = chip type (see data block types 00..3F)
+                # oo oo oo (24 bits) = read offset in data block
+                # dd dd dd (24 bits) = write offset in chip's ram (affected by chip's registers)
+                chip_type = self.data.read(1)
+                read_offset_in_data_block = self.data.read(3) # struct.unpack('<I', self.data.read(3) + b'\x00')[0]
+                write_offet_in_chip_ram = self.data.read(3)
+                
+                # Read the size of the data (24 bits)
+                # ss ss ss (24 bits) = size of data, in bytes
+                # Since size can't be zero, a size of 0 bytes means 0x0100 0000 bytes.
+                size_of_data = self.data.read(3)
+                #if size_of_data == 0:
+                #    size_of_data = 0x0100_0000
+
+                self.command_list.append({'command': command,
+                                             'data': {'chip_type': chip_type,
+                                                      'read_offset_in_data_block': read_offset_in_data_block,
+                                                      'write_offet_in_chip_ram': write_offet_in_chip_ram,
+                                                      'size_of_data': size_of_data}})
+
             # 0x7n - Wait n+1 samples, n can range from 0 to 15
             # 0x8n - YM2612 port 0 address 2A write from the data bank, then
             #        wait n samples; n can range from 0 to 15
             elif b'\x70' <= command <= b'\x8f':
                 self.command_list.append({'command': command, 'data': None})
 
+            # 0x90 ss tt pp cc - DAC Setup Stream Control
+            elif command == b'\x90':
+                stream_id = self.data.read(1)
+                chip_type = self.data.read(1)
+                port = self.data.read(1)
+                value = self.data.read(1)
+                self.command_list.append({'command': command,
+                                             'data': {'stream_id': stream_id,
+                                                      'chip_type': chip_type,
+                                                      'port': port,
+                                                      'value': value,
+                                                      }})
+            # 0x91 ss dd ll bb - DAC Set Stream Data
+            elif command == b'\x91':
+                stream_id = self.data.read(1)
+                data_bank_id = self.data.read(1)
+                step_size = self.data.read(1)
+                step_base = self.data.read(1)
+                self.command_list.append({'command': command,
+                                             'data': {'stream_id': stream_id,
+                                                      'data_bank_id': data_bank_id,
+                                                      'step_size': step_size,
+                                                      'step_base': step_base,
+                                                      }})
+            # 0x92 ss ff ff ff ff - DAC Set Stream Frequency
+            elif command == b'\x92':
+                stream_id = self.data.read(1)
+                frequency = self.data.read(4)
+                self.command_list.append({'command': command,
+                                             'data': {'stream_id': stream_id,
+                                                      'frequency': frequency,
+                                                      }})
+            # 0x93 ss aa aa aa aa mm ll ll ll ll - DAC Start Stream
+            elif command == b'\x93':
+                stream_id = self.data.read(1)
+                data_start = self.data.read(4)
+                mode = self.data.read(1)
+                data_length = self.data.read(4)
+                self.command_list.append({'command': command,
+                                             'data': {'stream_id': stream_id,
+                                                      'data_start': data_start,
+                                                      'mode': mode,
+                                                      'data_length': data_length,
+                                                      }})
+            # 0x94 ss - DAC Stop Stream
+            elif command == b'\x94':
+                stream_id = self.data.read(1)
+                self.command_list.append({'command': command,
+                                             'data': {'stream_id': stream_id,
+                                                      }})
+            # 0x95 ss bb bb ff - DAC Start Stream (fast call)
+            elif command == b'\x95':
+                stream_id = self.data.read(1)
+                block_id = self.data.read(2)
+                flags = self.data.read(1)
+                self.command_list.append({'command': command,
+                                             'data': {'stream_id': stream_id,
+                                                      'block_id': block_id,
+                                                      'flags': flags,
+                                                      }})
+
+            # 0xC0 bbaa dd - Sega PCM, write value dd to memory offset aabb
+            # 0xC1 bbaa dd - RF5C68, write value dd to memory offset aabb
+            # 0xC2 bbaa dd - RF5C164, write value dd to memory offset aabb
+            # 0xC3 cc bbaa - MultiPCM, write set bank offset aabb to channel cc
+            # 0xC4 mmll rr - QSound, write value mmll to register rr (mm - data MSB, ll - data LSB)
+            # 0xC5 mmll dd - SCSP, write value dd to memory offset mmll (mm - offset MSB, ll - offset LSB)
+            # 0xC6 mmll dd - WonderSwan, write value dd to memory offset mmll (mm - offset MSB, ll - offset LSB)
+            # 0xC7 mmll dd - VSU, write value dd to memory offset mmll (mm - offset MSB, ll - offset LSB)
+            # 0xC8 mmll dd - X1-010, write value dd to memory offset mmll (mm - offset MSB, ll - offset LSB)
+            # 0xD0 pp aa dd - YMF278B, port pp, write value dd to register aa
+            # 0xD1 pp aa dd - YMF271, port pp, write value dd to register aa
+            # 0xD2 pp aa dd - SCC1, port pp, write value dd to register aa
+            # 0xD3 pp aa dd - K054539, write value dd to register ppaa
+            # 0xD4 pp aa dd - C140, write value dd to register ppaa
+            # 0xD5 pp aa dd - ES5503, write value dd to register ppaa
+            # 0xD6 pp aa dd - ES5506, write value aadd to register pp
+            elif command in [b'\xc0', b'\xc1', b'\xc2', b'\xc3',
+                             b'\xc4', b'\xc5', b'\xc6', b'\xc7',
+                             b'\xc8',
+                             b'\xd0', b'\xd1', b'\xd2', b'\xd3',
+                             b'\xd4', b'\xd5', b'\xd6',
+                            ]:
+                self.command_list.append({
+                    'command': command,
+                    'data': self.data.read(3),
+                })
+
             # 0xe0 dddddddd - Seek to offset dddddddd (Intel byte order) in PCM
             #                 data bank
             elif command == b'\xe0':
+                self.command_list.append({
+                    'command': command,
+                    'data': self.data.read(4),
+                })
+
+            # 0xE1 mmll aadd - C352, write value aadd to register mmll
+            elif command == b'\xe1':
                 self.command_list.append({
                     'command': command,
                     'data': self.data.read(4),
