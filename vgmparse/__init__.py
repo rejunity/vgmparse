@@ -494,21 +494,43 @@ class Parser:
         self.metadata = {}
 
         # Iterate over the offsets and parse the metadata
+        highest_supported_version = self.supported_ver_list[-1]
         for version, offsets in self.metadata_offsets.items():
-            for value, offset_data in offsets.items():
+            # Skip parsing metadata from VGM versions later than the version of the file
+            if version <= self.metadata.get('version', highest_supported_version):
+                for value, offset_data in offsets.items():
 
-                # Seek to the data location and read the data
-                self.data.seek(offset_data['offset'])
-                data = self.data.read(offset_data['size'])
+                    # Calculate offset of VGM data
+                    vgm_data_offset = self.metadata.get('vgm_data_offset', 0)
+                    if vgm_data_offset > 0:
+                        vgm_data_offset += self.metadata_offsets[version]['vgm_data_offset']['offset']
+                    else:
+                        vgm_data_offset = 0x40
+                    header_end = vgm_data_offset # Header ends where VGM data starts
 
-                # Unpack the data if required
-                if offset_data['type_format'] is not None:
-                    self.metadata[value] = struct.unpack(
-                        offset_data['type_format'],
-                        data,
-                    )[0]
-                else:
-                    self.metadata[value] = data
+                    # Skip parsing metadata attributes that are located outside the header,
+                    # set them to 0 instead.
+                    #
+                    # See specification: "All header sizes are valid for all versions from 1.50 on,
+                    # as long as header has at least 64 bytes. If the VGM data starts at an offset
+                    # that is lower than 0x100, all overlapping header bytes have to be handled as
+                    # they were zero."
+                    if offset_data['offset'] >= header_end:
+                        self.metadata[value] = 0
+                        continue
+
+                    # Seek to the data location and read the data
+                    self.data.seek(offset_data['offset'])
+                    data = self.data.read(offset_data['size'])
+
+                    # Unpack the data if required
+                    if offset_data['type_format'] is not None:
+                        self.metadata[value] = struct.unpack(
+                            offset_data['type_format'],
+                            data,
+                        )[0]
+                    else:
+                        self.metadata[value] = data
 
         # Seek back to the original position in the VGM data
         self.data.seek(original_pos)
