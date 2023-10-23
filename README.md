@@ -8,7 +8,7 @@ Currently, versions from 1.50 to 1.70 of the VGM specification are supported.
 The `vgmparse` module can be installed directly from GitHub using `pip`:
 
 ```
-sudo pip install -e git+https://github.com/cdodd/vgmparse.git#egg=vgmparse
+sudo pip install -e git+https://github.com/rejunity/vgmparse.git#egg=vgmparse
 ```
 
 ## Usage
