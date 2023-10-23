@@ -23,6 +23,7 @@ class Parser:
         0x00000160,
         0x00000161,
         0x00000170,
+        0x00000171,
     ]
 
     # VGM metadata offsets
@@ -368,6 +369,10 @@ class Parser:
             if command == '':
                 break
 
+            # @TODO: automatize reading of command operands based on reserved ranges in specification (that should take care of dual chip support as well)
+            # @TODO: add optional flag to unpack operands
+            # @TODO: implement extra header (v1.70) support
+
             # 0x31 dd - AY8910 stereo mask, dd is a bit mask of i y r3 l3 r2 l2 r1 l1 (bit 7 ... 0)
             #           i   chip instance (0 or 1)
             #           y   set stereo mask for YM2203 SSG (1) or AY8910 (0)
@@ -419,8 +424,8 @@ class Parser:
                              b'\x5d', b'\x5e', b'\x5f', b'\xa0',
                              b'\xb0', b'\xb1', b'\xb2', b'\xb3',
                              b'\xb4', b'\xb5', b'\xb6', b'\xb7',
-                             b'\xb8', b'\xb9', b'\xbA', b'\xbB',
-                             b'\xbC', b'\xbD', b'\xbE', b'\xbF',
+                             b'\xb8', b'\xb9', b'\xba', b'\xbb',
+                             b'\xbc', b'\xbd', b'\xbe', b'\xbf',
                             ]:
                 self.command_list.append({
                     'command': command,
@@ -462,27 +467,11 @@ class Parser:
             elif command == b'\x68':
                 # Skip the compatibility byte (0x66)
                 self.data.seek(1, 1)
-
-                # Read PCM RAM write parameters
-                # cc   = chip type (see data block types 00..3F)
-                # oo oo oo (24 bits) = read offset in data block
-                # dd dd dd (24 bits) = write offset in chip's ram (affected by chip's registers)
-                chip_type = self.data.read(1)
-                read_offset_in_data_block = self.data.read(3) # struct.unpack('<I', self.data.read(3) + b'\x00')[0]
-                write_offet_in_chip_ram = self.data.read(3)
-                
-                # Read the size of the data (24 bits)
-                # ss ss ss (24 bits) = size of data, in bytes
-                # Since size can't be zero, a size of 0 bytes means 0x0100 0000 bytes.
-                size_of_data = self.data.read(3)
-                #if size_of_data == 0:
-                #    size_of_data = 0x0100_0000
-
-                self.command_list.append({'command': command,
-                                             'data': {'chip_type': chip_type,
-                                                      'read_offset_in_data_block': read_offset_in_data_block,
-                                                      'write_offet_in_chip_ram': write_offet_in_chip_ram,
-                                                      'size_of_data': size_of_data}})
+                # Read the rest of data cc oo oo oo dd dd dd ss ss ss
+                self.command_list.append({
+                    'command': command,
+                    'data': self.data.read(10),
+                })
 
             # 0x7n - Wait n+1 samples, n can range from 0 to 15
             # 0x8n - YM2612 port 0 address 2A write from the data bank, then
@@ -492,64 +481,40 @@ class Parser:
 
             # 0x90 ss tt pp cc - DAC Setup Stream Control
             elif command == b'\x90':
-                stream_id = self.data.read(1)
-                chip_type = self.data.read(1)
-                port = self.data.read(1)
-                value = self.data.read(1)
-                self.command_list.append({'command': command,
-                                             'data': {'stream_id': stream_id,
-                                                      'chip_type': chip_type,
-                                                      'port': port,
-                                                      'value': value,
-                                                      }})
+                self.command_list.append({
+                    'command': command,
+                    'data': self.data.read(4),
+                })
             # 0x91 ss dd ll bb - DAC Set Stream Data
             elif command == b'\x91':
-                stream_id = self.data.read(1)
-                data_bank_id = self.data.read(1)
-                step_size = self.data.read(1)
-                step_base = self.data.read(1)
-                self.command_list.append({'command': command,
-                                             'data': {'stream_id': stream_id,
-                                                      'data_bank_id': data_bank_id,
-                                                      'step_size': step_size,
-                                                      'step_base': step_base,
-                                                      }})
+                self.command_list.append({
+                    'command': command,
+                    'data': self.data.read(4),
+                })
             # 0x92 ss ff ff ff ff - DAC Set Stream Frequency
             elif command == b'\x92':
-                stream_id = self.data.read(1)
-                frequency = self.data.read(4)
-                self.command_list.append({'command': command,
-                                             'data': {'stream_id': stream_id,
-                                                      'frequency': frequency,
-                                                      }})
+                self.command_list.append({
+                    'command': command,
+                    'data': self.data.read(5),
+                })
             # 0x93 ss aa aa aa aa mm ll ll ll ll - DAC Start Stream
             elif command == b'\x93':
-                stream_id = self.data.read(1)
-                data_start = self.data.read(4)
-                mode = self.data.read(1)
-                data_length = self.data.read(4)
-                self.command_list.append({'command': command,
-                                             'data': {'stream_id': stream_id,
-                                                      'data_start': data_start,
-                                                      'mode': mode,
-                                                      'data_length': data_length,
-                                                      }})
+                self.command_list.append({
+                    'command': command,
+                    'data': self.data.read(10),
+                })
             # 0x94 ss - DAC Stop Stream
             elif command == b'\x94':
-                stream_id = self.data.read(1)
-                self.command_list.append({'command': command,
-                                             'data': {'stream_id': stream_id,
-                                                      }})
+                self.command_list.append({
+                    'command': command,
+                    'data': self.data.read(1),
+                })
             # 0x95 ss bb bb ff - DAC Start Stream (fast call)
             elif command == b'\x95':
-                stream_id = self.data.read(1)
-                block_id = self.data.read(2)
-                flags = self.data.read(1)
-                self.command_list.append({'command': command,
-                                             'data': {'stream_id': stream_id,
-                                                      'block_id': block_id,
-                                                      'flags': flags,
-                                                      }})
+                self.command_list.append({
+                    'command': command,
+                    'data': self.data.read(4),
+                })
 
             # 0xC0 bbaa dd - Sega PCM, write value dd to memory offset aabb
             # 0xC1 bbaa dd - RF5C68, write value dd to memory offset aabb
@@ -578,7 +543,7 @@ class Parser:
                     'data': self.data.read(3),
                 })
 
-            # 0xe0 dddddddd - Seek to offset dddddddd (Intel byte order) in PCM
+            # 0xE0 dddddddd - Seek to offset dddddddd (Intel byte order) in PCM
             #                 data bank
             elif command == b'\xe0':
                 self.command_list.append({
