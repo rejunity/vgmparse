@@ -256,6 +256,77 @@ class Parser:
             'qsound_clock': {'offset': 0xB4, 'size': 4, 'type_format': '<I'},
             'extra_header_offset': {'offset': 0xBc, 'size': 4, 'type_format': '<I'},    # 1.70
         },
+        # Version 1.71
+        0x00000171: {
+            'vgm_ident': {'offset': 0x00, 'size': 4, 'type_format': None},
+            'eof_offset': {'offset': 0x04, 'size': 4, 'type_format': '<I'},
+            'version': {'offset': 0x08, 'size': 4, 'type_format': '<I'},
+            'sn76489_clock': {'offset': 0x0c, 'size': 4, 'type_format': '<I'},
+            'ym2413_clock': {'offset': 0x10, 'size': 4, 'type_format': '<I'},
+            'gd3_offset': {'offset': 0x14, 'size': 4, 'type_format': '<I'},
+            'total_samples': {'offset': 0x18, 'size': 4, 'type_format': '<I'},
+            'loop_offset': {'offset': 0x1c, 'size': 4, 'type_format': '<I'},
+            'loop_samples': {'offset': 0x20, 'size': 4, 'type_format': '<I'},
+            'rate': {'offset': 0x24, 'size': 4, 'type_format': '<I'},
+            'sn76489_feedback': {'offset': 0x28, 'size': 2, 'type_format': '<H'},
+            'sn76489_shift_register_width': {'offset': 0x2a, 'size': 1, 'type_format': 'B'},
+            'sn76489_flags': {'offset': 0x2b, 'size': 1, 'type_format': 'B'},
+            'ym2612_clock': {'offset': 0x2c, 'size': 4, 'type_format': '<I'},
+            'ym2151_clock': {'offset': 0x30, 'size': 4, 'type_format': '<I'},
+            'vgm_data_offset': {'offset': 0x34, 'size': 4, 'type_format': '<I'},
+            'sega_pcm_clock': {'offset': 0x38, 'size': 4, 'type_format': '<I'},
+            'sega_pcm_interface': {'offset': 0x3c, 'size': 4, 'type_format': '<I'},
+            'rf5c68_clock': {'offset': 0x40, 'size': 4, 'type_format': '<I'},
+            'ym2203_clock': {'offset': 0x44, 'size': 4, 'type_format': '<I'},
+            'ym2608_clock': {'offset': 0x48, 'size': 4, 'type_format': '<I'},
+            'ym2610_clock': {'offset': 0x4c, 'size': 4, 'type_format': '<I'},
+            'ym3812_clock': {'offset': 0x50, 'size': 4, 'type_format': '<I'},
+            'ym3526_clock': {'offset': 0x54, 'size': 4, 'type_format': '<I'},
+            'y8950_clock': {'offset': 0x58, 'size': 4, 'type_format': '<I'},
+            'ymf262_clock': {'offset': 0x5c, 'size': 4, 'type_format': '<I'},
+            'ymf278b_clock': {'offset': 0x60, 'size': 4, 'type_format': '<I'},
+            'ymf271_clock': {'offset': 0x64, 'size': 4, 'type_format': '<I'},
+            'ymz280b_clock': {'offset': 0x68, 'size': 4, 'type_format': '<I'},
+            'rf5c164_clock': {'offset': 0x6c, 'size': 4, 'type_format': '<I'},
+            'pwm_clock': {'offset': 0x70, 'size': 4, 'type_format': '<I'},
+            'ay8910_clock': {'offset': 0x74, 'size': 4, 'type_format': '<I'},
+            'ay8910_type': {'offset': 0x78, 'size': 1, 'type_format': 'B'},
+            'ay8910_flags': {'offset': 0x79, 'size': 1, 'type_format': 'B'},
+            'ym2203_flags': {'offset': 0x7a, 'size': 1, 'type_format': 'B'},
+            'ym2608_flags': {'offset': 0x7b, 'size': 1, 'type_format': 'B'},
+            'volume_modifier': {'offset': 0x7c, 'size': 1, 'type_format': 'B'},
+            'loop_base': {'offset': 0x7e, 'size': 1, 'type_format': 'B'},
+            'loop_modifier': {'offset': 0x7f, 'size': 1, 'type_format': 'B'},
+            'gb_dmg_clock': {'offset': 0x80, 'size': 4, 'type_format': '<I'},
+            'nes_apu_clock': {'offset': 0x84, 'size': 4, 'type_format': '<I'},
+            'multi_pcm_clock': {'offset': 0x88, 'size': 4, 'type_format': '<I'},
+            'upd7759_clock': {'offset': 0x8c, 'size': 4, 'type_format': '<I'},
+            'okim6258_clock': {'offset': 0x90, 'size': 4, 'type_format': '<I'},
+            'okim6258_flags': {'offset': 0x94, 'size': 1, 'type_format': 'B'},
+            'k054539_flags': {'offset': 0x95, 'size': 1, 'type_format': 'B'},
+            'c140_type': {'offset': 0x96, 'size': 1, 'type_format': 'B'},
+            'okim6295 clock': {'offset': 0x98, 'size': 4, 'type_format': '<I'},
+            'k051649_k052539_clock': {'offset': 0x9C, 'size': 4, 'type_format': '<I'},
+            'k054539_clock': {'offset': 0xA0, 'size': 4, 'type_format': '<I'},
+            'huc6280_clock': {'offset': 0xA4, 'size': 4, 'type_format': '<I'},
+            'c140_clocl': {'offset': 0xA8, 'size': 4, 'type_format': '<I'},
+            'k053260_clock': {'offset': 0xAC, 'size': 4, 'type_format': '<I'},
+            'pokey_clock': {'offset': 0xB0, 'size': 4, 'type_format': '<I'},
+            'qsound_clock': {'offset': 0xB4, 'size': 4, 'type_format': '<I'},
+            'SCSP_clock': {'offset': 0xB8, 'size': 4, 'type_format': '<I'},             # 1.71
+            'extra_header_offset': {'offset': 0xBc, 'size': 4, 'type_format': '<I'},
+            'wonder_swan_clock': {'offset': 0xc0, 'size': 4, 'type_format': '<I'},      # 1.71
+            'vsu_clock': {'offset': 0xc4, 'size': 4, 'type_format': '<I'},              # 1.71
+            'saa1099_clock': {'offset': 0xc8, 'size': 4, 'type_format': '<I'},          # 1.71
+            'es5503_clock': {'offset': 0xcc, 'size': 4, 'type_format': '<I'},           # 1.71
+            'es5505_es5506_clock': {'offset': 0xd0, 'size': 4, 'type_format': '<I'},    # 1.71
+            'es5503_output_channels': {'offset': 0xd4, 'size': 1, 'type_format': 'B'},  # 1.71
+            'es5505_es5506_output_channels': {'offset': 0xd5, 'size': 1, 'type_format': 'B'}, # 1.71
+            'c352_clock_divider': {'offset': 0xd6, 'size': 1, 'type_format': 'B'},      # 1.71
+            'x1_010_clock': {'offset': 0xd8, 'size': 4, 'type_format': '<I'},           # 1.71
+            'c352_clock': {'offset': 0xdC, 'size': 4, 'type_format': '<I'},             # 1.71
+            'ga20_clock': {'offset': 0xe0, 'size': 4, 'type_format': '<I'},             # 1.71
+        },
     }
 
     def __init__(self, vgm_data):
