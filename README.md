@@ -2,7 +2,7 @@
 A Python module for parsing [VGM (Video Game Music)](https://en.wikipedia.org/wiki/VGM_(file_format))
 files. `.vgm` and `.vgz` (Gzip compressed) files are supported.
 
-Currently, versions from 1.50 to 1.70 of the VGM specification are supported.
+Versions from 1.50 to 1.71 (veta) of the VGM specification are supported.
 
 ## Installation
 The `vgmparse` module can be installed directly from GitHub using `pip`:
